@@ -50,10 +50,7 @@ pub async fn main() {
 
     client.join("squishywishyboo".to_owned()).unwrap();
 
-    let router = Router::new()
-        .route("/", get(root))
-        .route("/raw", get(raw))
-        .with_state(oscrems);
+    let router = Router::new().route("/", get(root)).with_state(oscrems);
 
     let listener = tokio::net::TcpListener::bind(&"127.0.0.1:3333")
         .await
@@ -67,13 +64,9 @@ pub async fn main() {
 async fn root(screms: State<Arc<RwLock<u32>>>) -> Html<String> {
     let screms = screms.read().await;
     Html(format!(
+        r#"<!DOCTYPE html><html lang="en"><head><meta http-equiv="refresh" content="0"></head><body>{}</body></html>"#,
         *screms
     ))
-}
-
-async fn raw(screms: State<Arc<RwLock<u32>>>) -> String {
-    let screms = screms.read().await;
-    (*screms).to_string()
 }
 
 fn allow_reset(badges: &[twitch_irc::message::Badge]) -> bool {
