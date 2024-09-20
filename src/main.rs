@@ -20,7 +20,6 @@ pub async fn main() {
 
     let join_handle = tokio::spawn(async move {
         while let Some(message) = incoming_messages.recv().await {
-            let last_screms = screms;
             if let Privmsg(message) = message {
                 match message.message_text.as_str() {
                     "!screm" => screms += 1,
@@ -31,12 +30,10 @@ pub async fn main() {
                             screms = s;
                         }
                     }
-                    _ => {}
+                    _ => continue,
                 }
             }
-            if screms != last_screms {
-                tx.send(screms).unwrap();
-            }
+            tx.send(screms).unwrap();
         }
     });
 
