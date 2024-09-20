@@ -67,7 +67,7 @@ pub async fn main() {
 async fn root(screms: State<Arc<RwLock<u32>>>) -> Html<String> {
     let screms = screms.read().await;
     Html(format!(
-        r#"<!DOCTYPE html><html lang="en"><head><meta http-equiv="refresh" content="5"></head><body>{}</body></html>"#,
+        r#"<!DOCTYPE html><html lang="en"><head><script>setInterval(() => {{fetch(`${{location.protocol}}//${{location.host}}/raw`).then(res => {{if (res.ok) return res.text()}}).then(v => {{document.getElementsByTagName('body')[0].innerHTML = v}})}},100)</script></head><body>{}</body></html>"#,
         *screms
     ))
 }
