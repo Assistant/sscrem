@@ -1,7 +1,8 @@
-use axum::extract::State;
-use axum::response::Html;
+use axum::extract::{ws::WebSocket, State, WebSocketUpgrade};
+use axum::response::{Html, Response};
 use axum::routing::get;
 use axum::Router;
+use spmc::Receiver;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use twitch_irc::login::StaticLoginCredentials;
@@ -17,9 +18,14 @@ pub async fn main() {
 
     let oscrems = Arc::new(RwLock::new(0u32));
     let screms = Arc::clone(&oscrems);
+    let (mut tx, rx) = spmc::channel();
 
     let join_handle = tokio::spawn(async move {
         while let Some(message) = incoming_messages.recv().await {
+            let last_screms = {
+                let screms = screms.read().await;
+                *screms
+            };
             if let Privmsg(message) = message {
                 match message.message_text.as_str() {
                     "!screm" => {
@@ -45,12 +51,19 @@ pub async fn main() {
                     _ => {}
                 }
             }
+            let screms = screms.read().await;
+            if *screms != last_screms {
+                tx.send(*screms).unwrap()
+            }
         }
     });
 
     client.join("squishywishyboo".to_owned()).unwrap();
 
-    let router = Router::new().route("/", get(root)).with_state(oscrems);
+    let router = Router::new()
+        .route("/", get(root))
+        .route("/ws", get(handler))
+        .with_state((oscrems, rx));
 
     let listener = tokio::net::TcpListener::bind(&"127.0.0.1:3333")
         .await
@@ -61,10 +74,31 @@ pub async fn main() {
     join_handle.await.unwrap();
 }
 
-async fn root(screms: State<Arc<RwLock<u32>>>) -> Html<String> {
+async fn handler(
+    ws: WebSocketUpgrade,
+    state: State<(Arc<RwLock<u32>>, Receiver<u32>)>,
+) -> Response {
+    ws.on_upgrade(|s| handle_socket(s, state))
+}
+async fn handle_socket(
+    mut socket: WebSocket,
+    State((_, rx)): State<(Arc<RwLock<u32>>, Receiver<u32>)>,
+) {
+    while let Ok(screm) = rx.recv() {
+        if socket
+            .send(axum::extract::ws::Message::Text(screm.to_string()))
+            .await
+            .is_err()
+        {
+            return;
+        }
+    }
+}
+
+async fn root(State((screms, _)): State<(Arc<RwLock<u32>>, Receiver<u32>)>) -> Html<String> {
     let screms = screms.read().await;
     Html(format!(
-        r#"<!DOCTYPE html><html lang="en"><head><meta http-equiv="refresh" content="0"></head><body>{}</body></html>"#,
+        r#"<!DOCTYPE html><html lang="en"><head><script>const socket = new WebSocket(`${{location.protocol == "https:" ? "wss:" : "ws:"}}//${{location.host}}/ws`);socket.addEventListener("message", event => {{document.getElementsByTagName('body')[0].innerHTML = event.data;}})</script></head><body>{}</body></html>"#,
         *screms
     ))
 }
