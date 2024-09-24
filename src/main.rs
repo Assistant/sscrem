@@ -23,9 +23,9 @@ pub async fn main() {
             if let Privmsg(message) = message {
                 match message.message_text.as_str() {
                     "!screm" => screms += 1,
-                    "!noscrem" if allow_edit(&message.badges) && screms > 0 => screms -= 1,
-                    "!reset" if allow_reset(&message.badges) => screms = 0,
-                    n if n.starts_with("!scremset ") && allow_reset(&message.badges) => {
+                    "!noscrem" if can_edit(&message.badges) && screms > 0 => screms -= 1,
+                    "!reset" if can_reset(&message.badges) => screms = 0,
+                    n if n.starts_with("!scremset ") && can_reset(&message.badges) => {
                         if let Ok(s) = n[10..].parse() {
                             screms = s;
                         }
@@ -74,14 +74,14 @@ async fn root(State(screms): State<Receiver<u32>>) -> Html<String> {
     ))
 }
 
-fn allow_reset(badges: &[twitch_irc::message::Badge]) -> bool {
+fn can_reset(badges: &[twitch_irc::message::Badge]) -> bool {
     badges
         .iter()
         .any(|badge| badge.name == "broadcaster" || badge.name == "moderator")
 }
 
-fn allow_edit(badges: &[twitch_irc::message::Badge]) -> bool {
-    allow_reset(badges)
+fn can_edit(badges: &[twitch_irc::message::Badge]) -> bool {
+    can_reset(badges)
         || badges
             .iter()
             .any(|badge| badge.name == "vip" || badge.name == "subscriber")
