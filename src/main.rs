@@ -32,8 +32,8 @@ pub async fn main() {
                     }
                     _ => continue,
                 }
+                tx.send(screms).unwrap();
             }
-            tx.send(screms).unwrap();
         }
     });
 
