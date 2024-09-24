@@ -1,13 +1,12 @@
-use axum::extract::ws::Message::Text;
-use axum::extract::{ws::WebSocket, State, WebSocketUpgrade};
+use axum::extract::ws::{Message::Text, WebSocket};
+use axum::extract::{State, WebSocketUpgrade};
 use axum::response::{Html, Response};
 use axum::routing::get;
 use axum::Router;
 use tokio::sync::watch::{self, Receiver};
 use twitch_irc::login::StaticLoginCredentials;
 use twitch_irc::message::ServerMessage::Privmsg;
-use twitch_irc::TwitchIRCClient;
-use twitch_irc::{ClientConfig, SecureTCPTransport};
+use twitch_irc::{ClientConfig, SecureTCPTransport, TwitchIRCClient};
 
 #[tokio::main]
 pub async fn main() {
