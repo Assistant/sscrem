@@ -66,7 +66,7 @@ async fn handler(ws: WebSocketUpgrade, state: State<Receiver<u32>>) -> Response 
 async fn handle_socket(mut socket: WebSocket, State(mut rx): State<Receiver<u32>>) {
     let mut heartbeat = interval(Duration::from_secs(30));
     let screm = *rx.borrow_and_update();
-    let Ok(()) = socket.send(Text(screm.to_string())).await else {
+    let Ok(()) = socket.send(Text(screm.to_string().into())).await else {
         return;
     };
 
@@ -74,11 +74,11 @@ async fn handle_socket(mut socket: WebSocket, State(mut rx): State<Receiver<u32>
         tokio::select! {
             biased;
             _ = heartbeat.tick() => {
-                let Ok(()) = socket.send(Ping(vec![])).await else { return };
+                let Ok(()) = socket.send(Ping(vec![].into())).await else { return };
             },
             Ok(()) = rx.changed() => {
                 let screm = *rx.borrow_and_update();
-                let Ok(()) = socket.send(Text(screm.to_string())).await else { return };
+                let Ok(()) = socket.send(Text(screm.to_string().into())).await else { return };
             },
             else => return,
         }
